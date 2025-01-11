@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo } from 'react';
-import { useImagePreload } from './hooks/useImagePreload';
 import { useStudyRecords } from './hooks/useStudyRecords';
 import { prefectures } from './data/prefectures';
 import { PrefectureImage } from './components/quiz/PrefectureImage';
@@ -10,6 +9,8 @@ import { StatsView } from './components/StatsView';
 import { EvaluationType, StudyMode, Prefecture } from './types/prefecture';
 import { useQuizProgress } from './hooks/useQuizProgress';
 import { ShuffleButton } from './components/quiz/ShuffleButton';
+import { useImageCache } from './hooks/useImageCache';
+import { LoadingScreen } from './components/LoadingScreen';
 
 const PrefectureQuiz = () => {
   const [mode, setMode] = useState<StudyMode | null>(null);
@@ -19,6 +20,7 @@ const PrefectureQuiz = () => {
   const [showKanji, setShowKanji] = useState(false);
   const { addRecord, clearRecords, getRecentRecords, getWeakPrefectures, hasWeakRecords } = useStudyRecords();
   const { savedProgress, saveProgress, clearProgress } = useQuizProgress();
+  const { imageCache, isLoading } = useImageCache();
 
   const [quizPrefectures, setQuizPrefectures] = useState<Prefecture[]>([]);
 
@@ -122,7 +124,9 @@ const PrefectureQuiz = () => {
     }
   }, [mode, getWeakPrefectures, saveProgress]);
 
-  useImagePreload(currentIndex);
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   if (showStats) {
     return (
@@ -171,7 +175,10 @@ const PrefectureQuiz = () => {
           className="w-full cursor-pointer touch-manipulation"
           onClick={handleImageClick}
         >
-          <PrefectureImage prefecture={currentPrefecture} />
+          <PrefectureImage
+            prefecture={currentPrefecture}
+            cachedImageUrl={imageCache[currentPrefecture.code]}
+          />
           <div className="relative w-full">
             {!showKanji && <div className="absolute inset-0 h-64" />}
             <PrefectureAnswer

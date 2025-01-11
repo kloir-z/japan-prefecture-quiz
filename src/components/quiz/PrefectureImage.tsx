@@ -3,15 +3,16 @@ import { Prefecture } from '../../types/prefecture';
 
 interface PrefectureImageProps {
     prefecture: Prefecture;
+    cachedImageUrl?: string;
 }
 
-export const PrefectureImage = memo(({ prefecture }: PrefectureImageProps) => {
+export const PrefectureImage = memo(({ prefecture, cachedImageUrl }: PrefectureImageProps) => {
     const [hasError, setHasError] = useState(false);
 
     return (
         <div className="w-full mb-4 select-none">
             <img
-                src={`/${prefecture.code}.png`}
+                src={cachedImageUrl || `/${prefecture.code}.png`}
                 alt={`${prefecture.name}の形状`}
                 className="w-full h-auto"
                 draggable={false}
@@ -26,6 +27,5 @@ export const PrefectureImage = memo(({ prefecture }: PrefectureImageProps) => {
         </div>
     );
 });
-
 
 PrefectureImage.displayName = 'PrefectureImage';
