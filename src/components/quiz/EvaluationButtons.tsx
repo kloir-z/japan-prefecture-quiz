@@ -19,24 +19,27 @@ interface EvaluationButtonsProps {
 }
 
 export const EvaluationButtons = memo(({ onEvaluate }: EvaluationButtonsProps) => (
-    <div className="flex gap-6 mt-4">
+    <div className="flex gap-6 mt-4" role="group" aria-label="学習評価ボタン">
         <button
             onClick={() => onEvaluate('good')}
             className="w-12 h-12 flex items-center justify-center rounded-full bg-green-500 hover:bg-green-600 transition-colors"
+            aria-label="できた"
         >
-            <Check className="w-8 h-8 text-white" />
+            <Check className="w-8 h-8 text-white" aria-hidden="true" />
         </button>
         <button
             onClick={() => onEvaluate('fair')}
             className="w-12 h-12 flex items-center justify-center rounded-full bg-yellow-500 hover:bg-yellow-600 transition-colors"
+            aria-label="漢字が書けなかった"
         >
-            <TriangleIcon />
+            <TriangleIcon aria-hidden="true" />
         </button>
         <button
             onClick={() => onEvaluate('poor')}
             className="w-12 h-12 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 transition-colors"
+            aria-label="できなかった"
         >
-            <X className="w-8 h-8 text-white" />
+            <X className="w-8 h-8 text-white" aria-hidden="true" />
         </button>
     </div>
 ));

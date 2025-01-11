@@ -1,11 +1,15 @@
 export interface Prefecture {
-    code: string;
-    name: string;
-    hiragana: string;
+    readonly code: string;
+    readonly name: string;
+    readonly hiragana: string;
 }
 
 export interface StudyRecord {
-    [prefCode: string]: 'good' | 'fair' | 'poor';
+    readonly prefCode: string;
+    readonly result: EvaluationType;
+    readonly timestamp: number;
 }
 
 export type EvaluationType = 'good' | 'fair' | 'poor';
+
+export type StudyMode = 'random' | 'weak-only';
