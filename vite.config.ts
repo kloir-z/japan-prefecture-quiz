@@ -26,6 +26,9 @@ export default defineConfig({
             purpose: 'any maskable'
           }
         ]
+      },
+      injectManifest: {
+        injectionPoint: undefined
       }
     })
   ]

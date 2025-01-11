@@ -1,5 +1,6 @@
-const CACHE_NAME = "prefecture-quiz-v1";
+self.__WB_MANIFEST;
 
+const CACHE_NAME = "prefecture-quiz-v1";
 // 都道府県の画像パスを生成
 const prefectureImages = Array.from({ length: 47 }, (_, i) => {
   const prefCode = String(i + 1).padStart(2, "0");
@@ -12,7 +13,6 @@ const ASSETS_TO_CACHE = [
   "/manifest.json",
   "/favicon.ico",
   "/pwa-192x192.png",
-  "/pwa-512x512.png",
   ...prefectureImages,
 ];
 
