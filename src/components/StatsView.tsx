@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Prefecture, StudyRecord } from '../types/prefecture';
 import { Check, AlertTriangle, X, Trash2 } from 'lucide-react';
 
@@ -9,7 +9,15 @@ interface StatsViewProps {
     onClearRecords: () => void;
 }
 
+type SortKey = 'prefCode' | 'prefecture' | 'total' | 'good' | 'fair' | 'poor';
+type SortDirection = 'asc' | 'desc';
+
+const NUMERIC_COLUMNS: SortKey[] = ['total', 'good', 'fair', 'poor'];
+
 export const StatsView = memo(({ prefectures, getRecentRecords, onBack, onClearRecords }: StatsViewProps) => {
+    const [sortKey, setSortKey] = useState<SortKey>('prefecture');
+    const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
     const stats = useMemo(() =>
         prefectures.map(pref => {
             const records = getRecentRecords(pref.code);
@@ -17,9 +25,9 @@ export const StatsView = memo(({ prefectures, getRecentRecords, onBack, onClearR
             const goodCount = records.filter(r => r.result === 'good').length;
             const fairCount = records.filter(r => r.result === 'fair').length;
             const poorCount = records.filter(r => r.result === 'poor').length;
-
             return {
                 prefecture: pref,
+                prefCode: pref.code,
                 total,
                 good: goodCount,
                 fair: fairCount,
@@ -28,10 +36,43 @@ export const StatsView = memo(({ prefectures, getRecentRecords, onBack, onClearR
         }),
         [prefectures, getRecentRecords]);
 
+    const sortedStats = useMemo(() => {
+        return [...stats].sort((a, b) => {
+            let compareValue: number;
+            if (sortKey === 'prefecture') {
+                compareValue = a.prefecture.name.localeCompare(b.prefecture.name);
+            } else if (sortKey === 'prefCode') {
+                compareValue = parseInt(a.prefCode) - parseInt(b.prefCode);
+            } else {
+                compareValue = (a[sortKey] || 0) - (b[sortKey] || 0);
+            }
+            return sortDirection === 'asc' ? compareValue : -compareValue;
+        });
+    }, [stats, sortKey, sortDirection]);
+
+    const handleHeaderClick = (key: SortKey) => {
+        if (sortKey === key) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortKey(key);
+            // 数値列は初回クリック時に降順（大きい順）にする
+            setSortDirection(NUMERIC_COLUMNS.includes(key) ? 'desc' : 'asc');
+        }
+    };
+
     const handleClearClick = () => {
         if (window.confirm('学習履歴をクリアしますか？')) {
             onClearRecords();
         }
+    };
+
+    const getSortIcon = (key: SortKey) => {
+        if (sortKey !== key) return null;
+        return (
+            <span className="ml-1 inline-block">
+                {sortDirection === 'asc' ? '▲' : '▼'}
+            </span>
+        );
     };
 
     return (
@@ -57,22 +98,51 @@ export const StatsView = memo(({ prefectures, getRecentRecords, onBack, onClearR
                 <table className="w-full border-collapse min-w-[320px]">
                     <thead>
                         <tr className="bg-gray-100">
-                            <th className="p-2 text-left w-32">都道府県</th>
-                            <th className="p-2 text-center w-16">回数</th>
-                            <th className="p-2 text-center w-16">
+                            <th
+                                className="p-2 text-left w-16 cursor-pointer hover:bg-gray-200"
+                                onClick={() => handleHeaderClick('prefCode')}
+                            >
+                                コード{getSortIcon('prefCode')}
+                            </th>
+                            <th
+                                className="p-2 text-left w-32 cursor-pointer hover:bg-gray-200"
+                                onClick={() => handleHeaderClick('prefecture')}
+                            >
+                                都道府県{getSortIcon('prefecture')}
+                            </th>
+                            <th
+                                className="p-2 text-center w-16 cursor-pointer hover:bg-gray-200"
+                                onClick={() => handleHeaderClick('total')}
+                            >
+                                回数{getSortIcon('total')}
+                            </th>
+                            <th
+                                className="p-2 text-center w-16 cursor-pointer hover:bg-gray-200"
+                                onClick={() => handleHeaderClick('good')}
+                            >
                                 <Check className="inline w-5 h-5 text-green-500" />
+                                {getSortIcon('good')}
                             </th>
-                            <th className="p-2 text-center w-16">
+                            <th
+                                className="p-2 text-center w-16 cursor-pointer hover:bg-gray-200"
+                                onClick={() => handleHeaderClick('fair')}
+                            >
                                 <AlertTriangle className="inline w-5 h-5 text-yellow-500" />
+                                {getSortIcon('fair')}
                             </th>
-                            <th className="p-2 text-center w-16">
+                            <th
+                                className="p-2 text-center w-16 cursor-pointer hover:bg-gray-200"
+                                onClick={() => handleHeaderClick('poor')}
+                            >
                                 <X className="inline w-5 h-5 text-red-500" />
+                                {getSortIcon('poor')}
                             </th>
                         </tr>
                     </thead>
                     <tbody>
-                        {stats.map(({ prefecture, total, good, fair, poor }) => (
+                        {sortedStats.map(({ prefecture, prefCode, total, good, fair, poor }) => (
                             <tr key={prefecture.code} className="border-b hover:bg-gray-50">
+                                <td className="p-2">{prefCode}</td>
                                 <td className="p-2">{prefecture.name}</td>
                                 <td className="p-2 text-center">{total}</td>
                                 <td className="p-2 text-center font-bold text-green-600">{good || '-'}</td>
@@ -86,3 +156,5 @@ export const StatsView = memo(({ prefectures, getRecentRecords, onBack, onClearR
         </div>
     );
 });
+
+export default StatsView;
