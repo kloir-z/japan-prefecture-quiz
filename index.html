@@ -4,14 +4,33 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="/favicon.png" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="description" content="都道府県の絵を見て名前を当てるクイズアプリです" />
+  <meta name="theme-color" content="#ffffff" />
+
+  <!-- PWA関連のmeta tags -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="都道府県クイズ" />
+
+  <!-- PWAのアイコン設定 -->
+  <link rel="apple-touch-icon" href="/pwa-192x192.png" />
+  <link rel="mask-icon" href="/pwa-512x512.png" color="#ffffff" />
+  <link rel="manifest" href="/manifest.json" />
+
   <title>都道府県クイズ</title>
 </head>
 
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
+  <!-- オフライン時のフォールバック -->
+  <noscript>
+    <div style="text-align: center; padding: 20px;">
+      このアプリケーションはJavaScriptを有効にする必要があります。
+    </div>
+  </noscript>
 </body>
 
 </html>

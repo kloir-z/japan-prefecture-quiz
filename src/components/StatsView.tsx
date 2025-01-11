@@ -104,7 +104,7 @@ export const StatsView = memo(({ prefectures, getRecentRecords, onBack, onClearR
                                 className="p-2 text-left w-16 cursor-pointer hover:bg-gray-200"
                                 onClick={() => handleHeaderClick('prefCode')}
                             >
-                                コード{getSortIcon('prefCode')}
+                                {getSortIcon('prefCode')}
                             </th>
                             <th
                                 className="p-2 text-left w-32 cursor-pointer hover:bg-gray-200"

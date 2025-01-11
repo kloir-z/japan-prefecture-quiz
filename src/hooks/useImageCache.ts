@@ -1,50 +1,105 @@
-// hooks/useImageCache.ts
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { prefectures } from '../data/prefectures';
 
 interface ImageCache {
     [key: string]: string;
 }
 
+interface CacheItem {
+    id: string;
+    data: Blob;
+    timestamp: number;
+}
+
 export const useImageCache = () => {
     const [imageCache, setImageCache] = useState<ImageCache>({});
     const [isLoading, setIsLoading] = useState(true);
-    const isLoadingRef = useRef(true);
-    const cachedUrlsRef = useRef<string[]>([]);
 
     useEffect(() => {
         let isMounted = true;
-        isLoadingRef.current = true;
         setIsLoading(true);
 
-        const loadImages = async () => {
-            const cache: ImageCache = {};
-            const newCachedUrls: string[] = [];
+        const cacheVersion = '1';
 
+        const initializeDB = () => {
+            return new Promise<IDBDatabase>((resolve, reject) => {
+                const request = indexedDB.open('prefectureQuizDB', 1);
+
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(request.result);
+
+                request.onupgradeneeded = (event) => {
+                    const db = (event.target as IDBOpenDBRequest).result;
+                    if (!db.objectStoreNames.contains('images')) {
+                        db.createObjectStore('images', { keyPath: 'id' });
+                    }
+                };
+            });
+        };
+
+        const loadImages = async () => {
             try {
-                await Promise.all(
-                    prefectures.map(async (prefecture) => {
-                        const response = await fetch(`/${prefecture.code}.png`);
-                        const blob = await response.blob();
-                        const url = URL.createObjectURL(blob);
-                        cache[prefecture.code] = url;
-                        newCachedUrls.push(url);
-                    })
-                );
+                const db = await initializeDB();
+                const cache: ImageCache = {};
+
+                const loadFromCache = async () => {
+                    const transaction = db.transaction('images', 'readonly');
+                    const store = transaction.objectStore('images');
+
+                    for (const prefecture of prefectures) {
+                        try {
+                            const request = store.get(`${prefecture.code}-${cacheVersion}`);
+                            const result = await new Promise<CacheItem | undefined>((resolve) => {
+                                request.onsuccess = () => resolve(request.result as CacheItem);
+                            });
+
+                            if (result?.data) {
+                                if (isMounted) {
+                                    cache[prefecture.code] = URL.createObjectURL(result.data);
+                                }
+                            }
+                        } catch (error) {
+                            console.warn(`Failed to load cache for prefecture ${prefecture.code}:`, error);
+                        }
+                    }
+                };
+
+                const fetchMissingImages = async () => {
+                    const transaction = db.transaction('images', 'readwrite');
+                    const store = transaction.objectStore('images');
+
+                    for (const prefecture of prefectures) {
+                        if (!cache[prefecture.code]) {
+                            try {
+                                const response = await fetch(`/${prefecture.code}.png`);
+                                const blob = await response.blob();
+
+                                if (isMounted) {
+                                    cache[prefecture.code] = URL.createObjectURL(blob);
+                                }
+
+                                store.put({
+                                    id: `${prefecture.code}-${cacheVersion}`,
+                                    data: blob,
+                                    timestamp: Date.now()
+                                });
+                            } catch (error) {
+                                console.error(`Failed to fetch prefecture ${prefecture.code}:`, error);
+                            }
+                        }
+                    }
+                };
+
+                await loadFromCache();
+                await fetchMissingImages();
 
                 if (isMounted) {
                     setImageCache(cache);
-                    cachedUrlsRef.current = newCachedUrls;
-                    isLoadingRef.current = false;
                     setIsLoading(false);
-                } else {
-                    // コンポーネントがアンマウントされていた場合、URLを解放
-                    newCachedUrls.forEach(url => URL.revokeObjectURL(url));
                 }
             } catch (error) {
-                console.error('Failed to load images:', error);
+                console.error('Failed to initialize image cache:', error);
                 if (isMounted) {
-                    isLoadingRef.current = false;
                     setIsLoading(false);
                 }
             }
@@ -54,11 +109,17 @@ export const useImageCache = () => {
 
         return () => {
             isMounted = false;
-            // 既存のURLを解放
-            cachedUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
-            cachedUrlsRef.current = [];
+            // Cleanup URLs
+            Object.values(imageCache).forEach(url => {
+                try {
+                    URL.revokeObjectURL(url);
+                } catch (error) {
+                    console.warn('Failed to revoke object URL:', error);
+                }
+            });
         };
-    }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Remove imageCache from dependencies
 
-    return { imageCache, isLoading: isLoading || isLoadingRef.current };
+    return { imageCache, isLoading };
 };
