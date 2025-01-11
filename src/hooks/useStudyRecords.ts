@@ -47,17 +47,34 @@ export const useStudyRecords = () => {
         });
     };
 
-    const getWeakPrefectures = (prefectures: Prefecture[]): Prefecture[] => {
+    const getWeakPrefectures = (prefectures: Prefecture[], isLearned: (prefCode: string) => boolean): Prefecture[] => {
         const weakPrefectures = prefectures.filter(pref => {
             const records = getRecentRecords(pref.code);
             return records.some(record => record.result === 'fair' || record.result === 'poor');
         });
 
-        // 弱点をランダムに並び替え
-        return weakPrefectures
-            .map(value => ({ value, sort: Math.random() }))
-            .sort((a, b) => a.sort - b.sort)
-            .map(({ value }) => value);
+        // 学習済みと未学習に分ける
+        const [learned, notLearned] = weakPrefectures.reduce<[Prefecture[], Prefecture[]]>(
+            (acc, prefecture) => {
+                if (isLearned(prefecture.code)) {
+                    acc[0].push(prefecture);
+                } else {
+                    acc[1].push(prefecture);
+                }
+                return acc;
+            },
+            [[], []]
+        );
+
+        // それぞれをランダムに並び替え
+        const shuffleArray = (array: Prefecture[]) =>
+            array
+                .map(value => ({ value, sort: Math.random() }))
+                .sort((a, b) => a.sort - b.sort)
+                .map(({ value }) => value);
+
+        // 未学習を先に、学習済みを後ろに配置
+        return [...shuffleArray(notLearned), ...shuffleArray(learned)];
     };
 
     return {
@@ -68,4 +85,3 @@ export const useStudyRecords = () => {
         getWeakPrefectures,
     };
 };
-

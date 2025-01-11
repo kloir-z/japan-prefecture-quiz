@@ -7,6 +7,7 @@ interface StatsViewProps {
     getRecentRecords: (prefCode: string) => StudyRecord[];
     onBack: () => void;
     onClearRecords: () => void;
+    isLearned: (prefCode: string) => boolean;
 }
 
 type SortKey = 'prefCode' | 'prefecture' | 'total' | 'good' | 'fair' | 'poor';
@@ -14,9 +15,9 @@ type SortDirection = 'asc' | 'desc';
 
 const NUMERIC_COLUMNS: SortKey[] = ['total', 'good', 'fair', 'poor'];
 
-export const StatsView = memo(({ prefectures, getRecentRecords, onBack, onClearRecords }: StatsViewProps) => {
-    const [sortKey, setSortKey] = useState<SortKey>('prefecture');
-    const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+export const StatsView = memo(({ prefectures, getRecentRecords, onBack, onClearRecords, isLearned }: StatsViewProps) => {
+    const [sortKey, setSortKey] = useState<SortKey>('prefCode');  // Changed default sort key
+    const [sortDirection, setSortDirection] = useState<SortDirection>('asc');  // Default to ascending for prefCode
 
     const stats = useMemo(() =>
         prefectures.map(pref => {
@@ -25,16 +26,18 @@ export const StatsView = memo(({ prefectures, getRecentRecords, onBack, onClearR
             const goodCount = records.filter(r => r.result === 'good').length;
             const fairCount = records.filter(r => r.result === 'fair').length;
             const poorCount = records.filter(r => r.result === 'poor').length;
+            const learned = isLearned(pref.code);
             return {
                 prefecture: pref,
                 prefCode: pref.code,
                 total,
                 good: goodCount,
                 fair: fairCount,
-                poor: poorCount
+                poor: poorCount,
+                learned
             };
         }),
-        [prefectures, getRecentRecords]);
+        [prefectures, getRecentRecords, isLearned]);
 
     const sortedStats = useMemo(() => {
         return [...stats].sort((a, b) => {
@@ -55,7 +58,6 @@ export const StatsView = memo(({ prefectures, getRecentRecords, onBack, onClearR
             setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
         } else {
             setSortKey(key);
-            // 数値列は初回クリック時に降順（大きい順）にする
             setSortDirection(NUMERIC_COLUMNS.includes(key) ? 'desc' : 'asc');
         }
     };
@@ -140,14 +142,18 @@ export const StatsView = memo(({ prefectures, getRecentRecords, onBack, onClearR
                         </tr>
                     </thead>
                     <tbody>
-                        {sortedStats.map(({ prefecture, prefCode, total, good, fair, poor }) => (
+                        {sortedStats.map(({ prefecture, prefCode, total, good, fair, poor, learned }) => (
                             <tr key={prefecture.code} className="border-b hover:bg-gray-50">
                                 <td className="p-2">{prefCode}</td>
                                 <td className="p-2">{prefecture.name}</td>
                                 <td className="p-2 text-center">{total}</td>
                                 <td className="p-2 text-center font-bold text-green-600">{good || '-'}</td>
-                                <td className="p-2 text-center font-bold text-yellow-600">{fair || '-'}</td>
-                                <td className="p-2 text-center font-bold text-red-600">{poor || '-'}</td>
+                                <td className={`p-2 text-center font-bold ${learned ? 'text-yellow-200' : 'text-yellow-600'}`}>
+                                    {fair || '-'}
+                                </td>
+                                <td className={`p-2 text-center font-bold ${learned ? 'text-red-200' : 'text-red-600'}`}>
+                                    {poor || '-'}
+                                </td>
                             </tr>
                         ))}
                     </tbody>

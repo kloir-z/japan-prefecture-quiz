@@ -1,9 +1,11 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useStudyRecords } from './hooks/useStudyRecords';
+import { useLearnedStates } from './hooks/useLearnedStates';
 import { prefectures } from './data/prefectures';
 import { PrefectureImage } from './components/quiz/PrefectureImage';
 import { PrefectureAnswer } from './components/quiz/PrefectureAnswer';
 import { EvaluationButtons } from './components/quiz/EvaluationButtons';
+import { LearnedToggle } from './components/quiz/LearnedToggle';
 import { MainMenu } from './components/MainMenu';
 import { StatsView } from './components/StatsView';
 import { EvaluationType, StudyMode, Prefecture } from './types/prefecture';
@@ -21,6 +23,7 @@ const PrefectureQuiz = () => {
   const { addRecord, clearRecords, getRecentRecords, getWeakPrefectures, hasWeakRecords } = useStudyRecords();
   const { savedProgress, saveProgress, clearProgress } = useQuizProgress();
   const { imageCache, isLoading } = useImageCache();
+  const { setLearned, isLearned, clearLearnedStates } = useLearnedStates();
 
   const [quizPrefectures, setQuizPrefectures] = useState<Prefecture[]>([]);
 
@@ -32,25 +35,20 @@ const PrefectureQuiz = () => {
   const handleModeSelect = useCallback((selectedMode: StudyMode) => {
     let newPrefectures: Prefecture[] = [];
 
-    // 保存された進行状況があり、同じモードが選択された場合は復元
     if (savedProgress && savedProgress.mode === selectedMode) {
       newPrefectures = savedProgress.prefectures;
       setCurrentIndex(savedProgress.currentIndex);
     } else {
-      // 新しいクイズを開始
-      newPrefectures = [...prefectures];
-
       if (selectedMode === 'weak-only') {
-        newPrefectures = getWeakPrefectures(prefectures);
+        newPrefectures = getWeakPrefectures(prefectures, isLearned);
       } else {
-        newPrefectures = newPrefectures
+        newPrefectures = [...prefectures]
           .map(value => ({ value, sort: Math.random() }))
           .sort((a, b) => a.sort - b.sort)
           .map(({ value }) => value);
       }
 
       setCurrentIndex(0);
-      // 新しい進行状況を保存
       saveProgress(selectedMode, newPrefectures, 0);
     }
 
@@ -58,7 +56,7 @@ const PrefectureQuiz = () => {
     setMode(selectedMode);
     setShowHiragana(false);
     setShowKanji(false);
-  }, [getWeakPrefectures, savedProgress, saveProgress]);
+  }, [getWeakPrefectures, savedProgress, saveProgress, isLearned]);
 
   const handleImageClick = () => {
     if (!showHiragana) {
@@ -73,12 +71,11 @@ const PrefectureQuiz = () => {
     addRecord(currentPrefecture.code, result);
 
     if (currentIndex === quizPrefectures.length - 1) {
-      clearProgress(); // クイズ完了時に進行状況をクリア
+      clearProgress();
       setMode(null);
     } else {
       const nextIndex = currentIndex + 1;
       setCurrentIndex(nextIndex);
-      // 進行状況を更新
       if (mode) {
         saveProgress(mode, quizPrefectures, nextIndex);
       }
@@ -101,11 +98,7 @@ const PrefectureQuiz = () => {
       let newPrefectures: Prefecture[] = [];
 
       if (mode === 'weak-only') {
-        const weakPrefectures = getWeakPrefectures(prefectures);
-        newPrefectures = weakPrefectures
-          .map(value => ({ value, sort: Math.random() }))
-          .sort((a, b) => a.sort - b.sort)
-          .map(({ value }) => value);
+        newPrefectures = getWeakPrefectures(prefectures, isLearned);
       } else {
         newPrefectures = [...prefectures]
           .map(value => ({ value, sort: Math.random() }))
@@ -122,7 +115,16 @@ const PrefectureQuiz = () => {
         saveProgress(mode, newPrefectures, 0);
       }
     }
-  }, [mode, getWeakPrefectures, saveProgress]);
+  }, [mode, getWeakPrefectures, saveProgress, isLearned]);
+
+  const handleClearAllData = () => {
+    if (window.confirm('全てのデータ（学習履歴・進行状況・覚えた状態）をクリアしますか？')) {
+      clearRecords();
+      clearProgress();
+      clearLearnedStates();
+      setMode(null);
+    }
+  };
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -134,7 +136,8 @@ const PrefectureQuiz = () => {
         prefectures={prefectures}
         getRecentRecords={getRecentRecords}
         onBack={() => setShowStats(false)}
-        onClearRecords={clearRecords}
+        onClearRecords={handleClearAllData}
+        isLearned={isLearned}
       />
     );
   }
@@ -189,13 +192,22 @@ const PrefectureQuiz = () => {
           </div>
         </div>
 
-        <div className="mt-4">
-          {showKanji && <EvaluationButtons onEvaluate={handleEvaluation} />}
+        <div className="mt-4 flex flex-col items-center gap-4">
+          {showKanji && (
+            <>
+              <EvaluationButtons onEvaluate={handleEvaluation} />
+              {mode === 'weak-only' && (
+                <LearnedToggle
+                  isLearned={isLearned(currentPrefecture.code)}
+                  onChange={(learned) => setLearned(currentPrefecture.code, learned)}
+                />
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
   );
-
 };
 
 export default PrefectureQuiz;
