@@ -8,7 +8,7 @@ interface PrefectureAnswerProps {
 }
 
 export const PrefectureAnswer = memo(({ prefecture, showHiragana, showKanji }: PrefectureAnswerProps) => (
-    <div className="flex flex-col items-center space-y-2">
+    <div className="flex flex-col items-center gap-2">
         {showHiragana && (
             <div className="text-3xl text-gray-800">
                 {prefecture.hiragana}
