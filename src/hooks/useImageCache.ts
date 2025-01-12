@@ -42,59 +42,51 @@ export const useImageCache = () => {
                 const db = await initializeDB();
                 const cache: ImageCache = {};
 
-                const loadFromCache = async () => {
-                    const transaction = db.transaction('images', 'readonly');
-                    const store = transaction.objectStore('images');
+                // 画像を1つずつ処理
+                for (const prefecture of prefectures) {
+                    try {
+                        const transaction = db.transaction('images', 'readonly');
+                        const store = transaction.objectStore('images');
 
-                    for (const prefecture of prefectures) {
-                        try {
-                            const request = store.get(`${prefecture.code}-${cacheVersion}`);
-                            const result = await new Promise<CacheItem | undefined>((resolve) => {
-                                request.onsuccess = () => resolve(request.result as CacheItem);
-                            });
+                        const request = store.get(`${prefecture.code}-${cacheVersion}`);
+                        const result = await new Promise<CacheItem | undefined>((resolve) => {
+                            request.onsuccess = () => resolve(request.result as CacheItem);
+                        });
 
-                            if (result?.data) {
-                                if (isMounted) {
-                                    cache[prefecture.code] = URL.createObjectURL(result.data);
-                                }
+                        if (result?.data) {
+                            if (isMounted) {
+                                cache[prefecture.code] = URL.createObjectURL(result.data);
                             }
-                        } catch (error) {
-                            console.warn(`Failed to load cache for prefecture ${prefecture.code}:`, error);
-                        }
-                    }
-                };
+                        } else {
+                            // キャッシュになければ新しく取得
+                            const writeTransaction = db.transaction('images', 'readwrite');
+                            const writeStore = writeTransaction.objectStore('images');
 
-                const fetchMissingImages = async () => {
-                    const transaction = db.transaction('images', 'readwrite');
-                    const store = transaction.objectStore('images');
+                            const response = await fetch(`/${prefecture.code}.png`);
+                            const blob = await response.blob();
 
-                    for (const prefecture of prefectures) {
-                        if (!cache[prefecture.code]) {
-                            try {
-                                const response = await fetch(`/${prefecture.code}.png`);
-                                const blob = await response.blob();
+                            if (isMounted) {
+                                cache[prefecture.code] = URL.createObjectURL(blob);
 
-                                if (isMounted) {
-                                    cache[prefecture.code] = URL.createObjectURL(blob);
-                                }
-
-                                store.put({
+                                // 新しいトランザクションで保存
+                                writeStore.put({
                                     id: `${prefecture.code}-${cacheVersion}`,
                                     data: blob,
                                     timestamp: Date.now()
                                 });
-                            } catch (error) {
-                                console.error(`Failed to fetch prefecture ${prefecture.code}:`, error);
                             }
                         }
-                    }
-                };
 
-                await loadFromCache();
-                await fetchMissingImages();
+                        // 途中経過を反映
+                        if (isMounted) {
+                            setImageCache(prevCache => ({ ...prevCache, [prefecture.code]: cache[prefecture.code] }));
+                        }
+                    } catch (error) {
+                        console.warn(`Failed to process prefecture ${prefecture.code}:`, error);
+                    }
+                }
 
                 if (isMounted) {
-                    setImageCache(cache);
                     setIsLoading(false);
                 }
             } catch (error) {
@@ -109,7 +101,6 @@ export const useImageCache = () => {
 
         return () => {
             isMounted = false;
-            // Cleanup URLs
             Object.values(imageCache).forEach(url => {
                 try {
                     URL.revokeObjectURL(url);
@@ -119,7 +110,7 @@ export const useImageCache = () => {
             });
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Remove imageCache from dependencies
+    }, []);
 
     return { imageCache, isLoading };
 };
